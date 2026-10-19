@@ -1,0 +1,27 @@
+{# Tabla genérica a partir de un Resultado (columnas + filas).
+   Con {% call(fila) tabla(res, acciones=true) %} ... {% endcall %} se agrega una columna de acciones. #}
+{% macro tabla(res, acciones=false) %}
+<div class="tabla-scroll">
+<table>
+  <thead>
+    <tr>
+      {% for c in res.columnas %}<th>{{ c }}</th>{% endfor %}
+      {% if acciones %}<th></th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for fila in res %}
+    <tr>
+      {% for c in res.columnas %}
+        <td class="{{ 'num' if fila[c] is number }}">{{ fila[c]|celda(c) }}</td>
+      {% endfor %}
+      {% if acciones %}<td class="acciones">{{ caller(fila) }}</td>{% endif %}
+    </tr>
+    {% else %}
+    <tr><td colspan="{{ res.columnas|length + (1 if acciones else 0) }}" class="vacio">(sin registros)</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="ayuda">{{ res|length }} fila(s)</p>
+{% endmacro %}

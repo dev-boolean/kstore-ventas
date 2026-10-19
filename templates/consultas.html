@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import tabla with context %}
+{% block titulo %}Consultas{% endblock %}
+{% block contenido %}
+<div class="pestanas">
+  {% for c in lista %}
+  <a href="{{ url_for('consultas', n=loop.index) }}" class="{{ 'activo' if loop.index == n }}">[{{ loop.index }}] {{ c.titulo.split('·', 1)[1] | trim }}</a>
+  {% endfor %}
+</div>
+<h3>── {{ actual.titulo }} ──</h3>
+{% if actual.descripcion %}<p class="ayuda">{{ actual.descripcion }}</p>{% endif %}
+{% if error %}<div class="msg msg-err">[ERROR] {{ error }}</div>{% else %}{{ tabla(res) }}{% endif %}
+<details>
+  <summary>Ver SQL de la consulta</summary>
+  <pre class="codigo">{{ actual.sql }}</pre>
+</details>
+{% endblock %}

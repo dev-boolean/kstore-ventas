@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KStore · Pedidos</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%230C0C0C'/><text x='2' y='12' font-size='11' fill='%23CCCCCC' font-family='monospace'>&gt;_</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='terminal.css') }}">
+</head>
+<body>
+  <header class="barra-top">
+    <span>kstore.db ── {{ EMPRESA }} ── Sistema de Pedidos v{{ VERSION }}</span>
+    <span>{{ ahora }}</span>
+  </header>
+
+  <div class="cuerpo">
+    <nav class="caja menu-caja">
+      <div class="titulo-caja">[ Menú ]</div>
+      <ul class="menu">
+        {% for tecla, clave, etiqueta in MENU %}
+        <li><a href="{{ url_for('inicio') if clave == 'inicio' else ('/' ~ clave) }}" data-tecla="{{ tecla }}"
+               class="{{ 'activo' if menu == clave else '' }}"><u>{{ tecla }}</u> {{ etiqueta }}</a></li>
+        {% endfor %}
+      </ul>
+      <p class="ayuda">Teclas: 0-9 elegir · ↑↓ mover · Enter abrir · Esc inicio</p>
+    </nav>
+
+    <main class="caja principal">
+      <div class="titulo-caja">[ {% block titulo %}{% endblock %} ]</div>
+      {% with mensajes = get_flashed_messages(with_categories=true) %}
+        {% for tipo, texto in mensajes %}
+          <div class="msg msg-{{ tipo }}">{{ {'ok': '[ OK ]', 'err': '[ERROR]', 'warn': '[ ! ]'}[tipo] }} {{ texto }}</div>
+        {% endfor %}
+      {% endwith %}
+      {% block contenido %}{% endblock %}
+    </main>
+  </div>
+
+  <section class="caja bitacora-caja">
+    <div class="titulo-caja">[ Mensajes · bitácora SQL ]
+      <form method="post" action="{{ url_for('limpiar_bitacora') }}" class="en-linea">
+        <button class="btn-mini" title="Limpiar mensajes">limpiar</button>
+      </form>
+    </div>
+    <div class="bitacora">{% for hora, estado, texto in bitacora %}<span class="t">[{{ hora }}]</span> <span class="{{ estado|lower }}">{{ '%-3s'|format(estado) }}</span> {{ texto }}
+{% else %}<span class="t">Sin actividad. Aquí aparece cada sentencia SQL que ejecuta el sistema.</span>{% endfor %}</div>
+  </section>
+
+  <footer class="barra-bottom">
+    <span><b>0-9</b> Menú  <b>↑↓</b> Navegar  <b>Enter</b> Seleccionar  <b>Esc</b> Inicio</span>
+    <span>SQLite {{ sqlite_version }} · Flask · {{ CURSO }}</span>
+  </footer>
+
+  <script src="{{ url_for('static', filename='terminal.js') }}"></script>
+</body>
+</html>

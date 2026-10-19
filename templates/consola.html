@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import tabla with context %}
+{% block titulo %}Consola SQL{% endblock %}
+{% block contenido %}
+<div class="consola">
+  <form method="post" class="consola-form">
+    <label for="ejemplo">Ejemplos</label>
+    <select id="ejemplo">
+      <option value="">(elegir un ejemplo)</option>
+      {% for nombre, sql in ejemplos.items() %}<option value="{{ sql }}">{{ nombre }}</option>{% endfor %}
+    </select>
+    <label for="sql">sqlite&gt;</label>
+    <textarea id="sql" name="sql" rows="7" spellcheck="false"
+              placeholder="Escriba una o varias sentencias SQL terminadas en ;  (Ctrl+Enter ejecuta)">{{ script }}</textarea>
+    <div class="botones">
+      <button class="btn primario" type="submit">&lt; Ejecutar &gt;</button>
+      <a class="btn" href="{{ url_for('consola') }}">&lt; Limpiar &gt;</a>
+    </div>
+    <p class="ayuda">Todas las sentencias se ejecutan en una sola transacción: si una falla, se hace ROLLBACK de todas.</p>
+  </form>
+  <aside>
+    <h3>── Tablas ──</h3>
+    <pre class="ascii">{% for t, n in tablas %}<span class="k">{{ '%-16s'|format(t) }}</span><span class="v">{{ '%4d'|format(n) }}</span>
+{% endfor %}<span class="tenue">v_pedido_resumen (vista)</span></pre>
+  </aside>
+</div>
+{% if error %}<div class="msg msg-err">[ERROR] {{ error }}</div>{% endif %}
+{% for sentencia, res, filas in resultados %}
+  <pre class="ascii"><span class="brillante">sqlite&gt;</span> {{ sentencia|replace('\n', ' ') }}</pre>
+  {% if res is not none %}{{ tabla(res) }}{% else %}<div class="msg msg-ok">[ OK ] Ejecutada. Filas afectadas: {{ [filas, 0]|max }}</div>{% endif %}
+{% endfor %}
+{% endblock %}

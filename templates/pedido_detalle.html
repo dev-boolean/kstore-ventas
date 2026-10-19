@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titulo %}Pedidos · Pedido #{{ '%05d'|format(id) }}{% endblock %}
+{% block contenido %}
+<pre class="ascii">{{ factura }}</pre>
+<div class="botones">
+  <a class="btn" href="{{ url_for('pedidos') }}">&lt; Volver &gt;</a>
+  <form method="post" action="{{ url_for('pedido_eliminar', id=id) }}" class="en-linea"
+        data-confirmar="¿Eliminar el pedido #{{ '%05d'|format(id) }}? Su detalle se borra en cascada.">
+    <button class="btn">&lt; Eliminar pedido &gt;</button>
+  </form>
+</div>
+<p class="ayuda">Al eliminar un pedido, sus líneas de DETALLE_PEDIDO se borran solas (ON DELETE CASCADE).</p>
+{% endblock %}

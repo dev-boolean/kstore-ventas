@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block titulo %}{{ cfg.titulo }} · Eliminar #{{ id }}{% endblock %}
+{% block contenido %}
+<p>¿Eliminar este registro?</p>
+<pre class="ascii">{% for k, v in fila.items() %}<span class="k">{{ '%-18s'|format(k) }}</span> : <span class="v">{{ v }}</span>
+{% endfor %}</pre>
+<p class="ayuda">Si el registro tiene datos relacionados, la base de datos rechaza el borrado (ON DELETE RESTRICT).</p>
+<form method="post" class="botones">
+  <button class="btn primario" type="submit">&lt; Sí, eliminar &gt;</button>
+  <a class="btn" href="{{ url_for('listar', nombre=nombre) }}">&lt; Cancelar &gt;</a>
+</form>
+{% endblock %}

@@ -1,177 +1,155 @@
-# KStore S.A.S. · Sistema de Gestión de Ventas
+# KStore S.A.S. · Sistema de Pedidos
 
-**Laboratorio 01 · Bases de Datos**: aplicación que usa una base de datos relacional para gestionar
-la venta de productos de una empresa a varios clientes.
+**Laboratorio 01 · Bases de Datos.** Sistema de información sobre una base de datos relacional para una
+empresa que vende productos a varios clientes, con productos suministrados por proveedores.
 
-- **Lenguaje:** Python 3.9+
-- **Interfaz web:** Streamlit, con estilo de terminal (ncurses / menuconfig)
-- **Base de datos:** SQLite 3
+- **Lenguaje y framework:** Python 3.9+ con **Flask**
+- **Motor de base de datos:** **SQLite 3** (driver `sqlite3`, incluido en Python)
+- **Interfaz:** web, con estilo de terminal (ncurses / menuconfig) y manejo con teclado
+- **Integrantes:** Andrés Parejo, Valeria Flórez, Víctor Mendoza, Santiago Molina, Sara Ibáñez
 
 ---
 
-## 1. Estructura del proyecto
+## 1. Enunciado
 
-```
-proyecto_base_datos/
-├── app.py                 # Interfaz (menú, módulos, estilo terminal)
-├── db.py                  # Capa de acceso a datos, transacciones y bitácora SQL
-├── documentos.py          # Validación y formato de CC, CE y NIT colombianos
-├── requirements.txt       # Dependencias para instalar / Streamlit Cloud
-├── .streamlit/config.toml # Tema de terminal en blanco y negro
-├── sql/
-│   ├── schema.sql         # DDL: tablas, PK, FK, CHECK, UNIQUE, índices, triggers, vista
-│   ├── seed.sql           # Datos de ejemplo (5 categorías, 22 productos, 10 clientes, 15 ventas)
-│   ├── consultas.sql      # 13 consultas SQL de reportes (la app las lee de aquí)
-│   └── ejemplos_dml.sql   # INSERT / UPDATE / DELETE y pruebas de integridad para la sustentación
-└── data/kstore.db      # Se crea solo al iniciar la app (no se sube al repositorio)
-```
+> Una empresa vende productos a varios clientes. Se necesita conocer los datos personales de los clientes
+> (identificación, nombre, apellidos, dirección y fecha de nacimiento). Cada producto tiene un nombre y un
+> código, así como un precio unitario. Un cliente puede comprar varios productos a la empresa, y un mismo
+> producto puede ser comprado por varios clientes. Los productos son suministrados por diferentes
+> proveedores. Un producto sólo puede ser suministrado por un proveedor, y un proveedor puede suministrar
+> diferentes productos. De cada proveedor se desea conocer el nit, nombre y dirección.
 
-## 2. Modelo entidad-relación
+## 2. Diagrama entidad-relación
 
 ```mermaid
 erDiagram
-    CATEGORIA ||--o{ PRODUCTO : clasifica
-    CLIENTE   ||--o{ VENTA    : realiza
-    VENDEDOR  ||--o{ VENTA    : registra
-    VENTA     ||--|{ DETALLE_VENTA : contiene
-    PRODUCTO  ||--o{ DETALLE_VENTA : "se vende en"
+    PROVEEDOR ||--o{ PRODUCTO       : suministra
+    CLIENTE   ||--o{ PEDIDO         : realiza
+    PEDIDO    ||--|{ DETALLE_PEDIDO : contiene
+    PRODUCTO  ||--o{ DETALLE_PEDIDO : "se pide en"
 
-    CATEGORIA {
-        int id_categoria PK
-        text nombre UK
-        text descripcion
-    }
-    PRODUCTO {
-        int id_producto PK
-        text codigo UK
+    PROVEEDOR {
+        int  id_proveedor PK
+        text nit UK "con dígito de verificación"
         text nombre
-        int id_categoria FK
-        real precio "CHECK > 0"
-        int stock "CHECK >= 0"
-        int stock_minimo
-        int activo
+        text direccion
     }
     CLIENTE {
-        int id_cliente PK
-        text tipo_doc "CC | NIT | CE"
-        text documento UK
+        int  id_cliente PK
+        text tipo_doc "CC | CE"
+        text identificacion UK
         text nombre
-        text tipo "PERSONA | EMPRESA"
-        text email UK
-        text telefono
-        text ciudad
-        text fecha_registro
+        text apellidos
+        text direccion
+        text fecha_nacimiento
     }
-    VENDEDOR {
-        int id_vendedor PK
-        text documento UK
+    PRODUCTO {
+        int  id_producto PK
+        text codigo UK
         text nombre
-        text email UK
-        real comision "0 a 0.20"
-        int activo
+        real precio_unitario "CHECK > 0"
+        int  id_proveedor FK
     }
-    VENTA {
-        int id_venta PK
+    PEDIDO {
+        int  id_pedido PK
+        int  id_cliente FK
         text fecha
-        int id_cliente FK
-        int id_vendedor FK
-        text metodo_pago
-        text estado "PAGADA | PENDIENTE | ANULADA"
     }
-    DETALLE_VENTA {
-        int id_venta PK, FK
-        int id_producto PK, FK
-        int cantidad "CHECK > 0"
-        real precio_unitario
-        real descuento "0 a 0.50"
+    DETALLE_PEDIDO {
+        int  id_pedido PK, FK
+        int  id_producto PK, FK
+        int  cantidad "CHECK > 0"
+        real precio_compra "CHECK > 0"
     }
 ```
 
-`DETALLE_VENTA` resuelve la relación **muchos a muchos** entre `VENTA` y `PRODUCTO`. Su clave
-primaria es compuesta: `(id_venta, id_producto)`.
+- **PROVEEDOR 1 : N PRODUCTO.** Un proveedor suministra varios productos y cada producto tiene un solo proveedor.
+- **CLIENTE N : M PRODUCTO.** Se resuelve con **PEDIDO** (cada compra de un cliente) y **DETALLE_PEDIDO**
+  (los productos de cada pedido, con la cantidad y el precio de compra).
 
-## 3. Cómo se cubre cada punto del laboratorio
+## 3. Modelo relacional
 
-| Concepto | Dónde se ve |
+Subrayado = clave primaria · `#` = clave foránea
+
+- PROVEEDOR (<u>id_proveedor</u>, nit, nombre, direccion)
+- CLIENTE (<u>id_cliente</u>, tipo_doc, identificacion, nombre, apellidos, direccion, fecha_nacimiento)
+- PRODUCTO (<u>id_producto</u>, codigo, nombre, precio_unitario, #id_proveedor → PROVEEDOR)
+- PEDIDO (<u>id_pedido</u>, #id_cliente → CLIENTE, fecha)
+- DETALLE_PEDIDO (<u>#id_pedido</u> → PEDIDO, <u>#id_producto</u> → PRODUCTO, cantidad, precio_compra)
+
+## 4. Restricciones de integridad
+
+| Restricción | Dónde |
 |---|---|
-| Modelo entidad-relación | Módulo **9 Modelo E-R** (diagrama, diccionario de datos y DDL) y el diagrama de arriba |
-| Creación de tablas y relaciones | `sql/schema.sql` |
-| Claves primarias y foráneas | `PRIMARY KEY` en todas las tablas; `FOREIGN KEY` con `ON DELETE RESTRICT` y `CASCADE` |
-| Restricciones de integridad | `NOT NULL`, `UNIQUE`, `CHECK` (precio > 0, stock ≥ 0, formato de CC/CE/NIT, dígito de verificación del NIT…), `DEFAULT` y 6 triggers |
-| Consultas SQL | Módulo **7 Reportes SQL** (13 consultas con JOIN, GROUP BY, HAVING, subconsultas, LEFT JOIN, NOT EXISTS) y **8 Consola SQL** |
-| Inserción / actualización / eliminación | Módulos Clientes, Productos, Categorías, Vendedores y Ventas (Nuevo / Editar / Eliminar) |
-| Transacciones | Registrar una venta = `BEGIN` → `INSERT venta` → `INSERT detalle…` → `COMMIT` (o `ROLLBACK` si algo falla) |
+| Claves primarias | Todas las tablas. `DETALLE_PEDIDO` usa clave compuesta `(id_pedido, id_producto)`. |
+| Claves foráneas | `ON DELETE RESTRICT`: no se borra un cliente con pedidos, un proveedor con productos ni un producto ya pedido. `ON DELETE CASCADE`: al borrar un pedido se borra su detalle. |
+| `UNIQUE` | NIT del proveedor, identificación del cliente, código del producto. |
+| `CHECK` | Precio > 0, cantidad > 0, formato de CC (6–10 dígitos) y CE (6–7), NIT `900123456-8` con **dígito de verificación de la DIAN**, fecha de nacimiento real. |
+| `NOT NULL` | Todos los datos que pide el enunciado. |
+| Vista | `v_pedido_resumen` calcula el total de cada pedido. |
 
-**Documentos de identidad (formato colombiano):**
+## 5. Menú del programa
 
-| Tipo | Regla | Se guarda | Se muestra |
-|---|---|---|---|
-| CC (cédula de ciudadanía) | 6 a 10 dígitos, sin cero inicial | `1045678912` | `1.045.678.912` |
-| CE (cédula de extranjería) | 6 a 7 dígitos, sin cero inicial | `845123` | `845.123` |
-| NIT (empresas) | 9 dígitos que empiezan por 8 o 9, más el dígito de verificación | `900123456-8` | `900.123.456-8` |
+| Tecla | Opción | Qué hace |
+|---|---|---|
+| `1` | Inicio | Estado de la base de datos y últimos pedidos |
+| `2` | Clientes | Insertar, actualizar, borrar y buscar clientes |
+| `3` | Productos | Insertar, actualizar, borrar y buscar productos |
+| `4` | Proveedores | Insertar, actualizar, borrar y buscar proveedores |
+| `5` | Pedidos | Un cliente realiza un pedido de varios productos (transacción); ver y eliminar pedidos |
+| `6` | Consultas | Las 4 consultas pedidas (ver tabla abajo) |
+| `7` | Consola SQL | Ejecutar SQL directamente (extra) |
+| `8` | Modelo E-R | Diagrama E-R, modelo relacional, diccionario de datos y script de creación |
+| `0` | Sistema | Integrantes, descargas y reiniciar la base de datos |
 
-- El dígito de verificación (DV) del NIT se calcula con el algoritmo módulo 11 de la DIAN. Lo valida
-  la restricción `ck_cliente_nit_dv` en la base de datos y también la aplicación, que dice cuál es el
-  DV correcto. Si se escribe el NIT sin DV, la aplicación lo calcula sola.
-- Los documentos se pueden escribir con o sin puntos. La búsqueda también ignora los puntos.
-- Las empresas deben tener NIT y las personas CC o CE (`ck_cliente_doc_tipo`).
-- La función SQL `formato_doc(tipo_doc, documento)` se registra desde Python para mostrar los puntos.
+**Consultas** (`sql/consultas.sql`):
 
-**Triggers:**
-- `trg_detalle_valida_stock`: no deja vender más unidades de las que hay en stock.
-- `trg_detalle_descuenta_stock`: descuenta el inventario al vender.
-- `trg_venta_anular`: devuelve el stock al anular una venta.
-- `trg_venta_no_reactivar`: una venta anulada no se puede reactivar.
-- `trg_venta_eliminar`: devuelve el stock al eliminar una venta que no estaba anulada.
-- `trg_detalle_valida_venta`: no deja agregar productos a una venta anulada.
+1. Clientes y la cantidad de pedidos realizados.
+2. Clientes que no realizaron ningún pedido.
+3. Nombre del cliente, nombre del producto, cantidad comprada, precio de compra y proveedor.
+4. Proveedores con los productos suministrados.
 
-**Vista:** `v_venta_resumen` calcula el subtotal, el IVA (19 %) y el total de cada venta.
+Teclado: `0`–`9` abren una opción, `↑` `↓` mueven por el menú, `Enter` abre, `Esc` vuelve al inicio y
+`Ctrl+Enter` ejecuta la consola SQL. El panel **Mensajes · bitácora SQL** muestra cada sentencia que se ejecuta.
 
-## 4. Ejecutar en el computador
+## 6. Estructura del proyecto
+
+```
+proyecto_base_datos/
+├── app.py              # Flask: rutas, menú, CRUD, pedidos, consultas
+├── db.py               # Acceso a SQLite, transacciones y bitácora SQL
+├── documentos.py       # Validación y formato de CC, CE y NIT colombianos
+├── templates/          # Pantallas HTML (Jinja2)
+├── static/             # terminal.css y terminal.js (estilo y atajos de teclado)
+├── sql/
+│   ├── schema.sql      # Script de creación de tablas (DDL)
+│   ├── seed.sql        # Datos de ejemplo
+│   ├── consultas.sql   # Las 4 consultas del laboratorio
+│   └── ejemplos_dml.sql# INSERT / UPDATE / DELETE y pruebas de integridad
+├── requirements.txt
+└── render.yaml         # Despliegue en Render
+```
+
+La base de datos `data/kstore.db` se crea sola la primera vez con `schema.sql` y `seed.sql`.
+
+## 7. Ejecutar en el computador
 
 ```bash
 pip install -r requirements.txt
 ```
 
 ```bash
-streamlit run app.py
+python app.py
 ```
 
-Se abre en `http://localhost:8501`. La base de datos se crea sola la primera vez.
+Abrir `http://localhost:5000`.
 
-## 5. Publicar en la web (Streamlit Community Cloud, gratis)
+## 8. Publicar en la web (Render, gratis)
 
-1. Crear un repositorio en GitHub y subir esta carpeta. `data/` no se sube porque está en `.gitignore`.
-2. Entrar a <https://share.streamlit.io> con la cuenta de GitHub.
-3. **Create app** → elegir el repositorio, la rama `main` y el archivo `app.py`.
-4. En **Advanced settings**, elegir Python 3.11 o 3.12.
-5. **Deploy**. En uno o dos minutos queda una URL como `https://kstore.streamlit.app`.
+1. Subir el proyecto a GitHub.
+2. Entrar a <https://render.com> con la cuenta de GitHub → **New** → **Blueprint** → elegir el repositorio.
+   Render lee `render.yaml` y crea el servicio `kstore-pedidos`.
+3. En unos minutos queda una URL como `https://kstore-pedidos.onrender.com`.
 
-> En Streamlit Cloud el disco no es permanente: cuando la app se reinicia, la base vuelve a los
-> datos de ejemplo. Para la demo es una ventaja, porque siempre arranca limpia. También se puede
-> reiniciar a mano desde **0 Sistema → Reiniciar base de datos**.
-
-## 6. Uso de la interfaz
-
-| Tecla | Acción |
-|---|---|
-| `0`–`9` | Abrir la opción del menú |
-| `↑` `↓` | Moverse por el menú |
-| `Enter` | Abrir la opción seleccionada |
-| `Esc` | Volver al inicio |
-
-- El panel **Mensajes · bitácora SQL** muestra cada sentencia SQL que ejecuta el sistema, incluidas
-  `BEGIN`, `COMMIT` y `ROLLBACK`. Sirve para mostrar en la sustentación lo que pasa por dentro.
-- Los nombres de los integrantes se editan en `app.py`, en la lista `INTEGRANTES`.
-
-## 7. Guion sugerido para la sustentación
-
-1. **Inicio**: presentar la empresa y el panel de estado.
-2. **Modelo E-R**: explicar las entidades, las cardinalidades y la tabla intermedia `DETALLE_VENTA`.
-3. **Clientes → Nuevo**: crear un cliente. Luego repetir el documento para mostrar el error **UNIQUE**.
-4. **Clientes → Eliminar** un cliente que tiene ventas: se ve el error **FOREIGN KEY (RESTRICT)**.
-5. **Ventas → Nueva venta**: agregar productos, confirmar y ver la factura. En la bitácora aparece la
-   transacción y en **Productos** el stock ya descontado.
-6. **Ventas → Gestionar → Anular**: el trigger devuelve el stock.
-7. **Reportes SQL**: recorrer las consultas y abrir "Ver SQL".
-8. **Consola SQL**: ejecutar los ejemplos de error (CHECK, FK, duplicados).
+En el plan gratuito, el servicio se duerme tras 15 minutos sin uso; la primera visita después tarda cerca de
+un minuto. El disco no es permanente: al reiniciarse, la base vuelve a los datos de ejemplo.

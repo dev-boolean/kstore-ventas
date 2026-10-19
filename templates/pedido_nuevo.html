@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block titulo %}Pedidos · Nuevo pedido{% endblock %}
+{% block contenido %}
+<h3>── 1. Agregar productos ──</h3>
+<form method="post" class="fila-form">
+  <input type="hidden" name="accion" value="agregar">
+  <div class="campo ancho">
+    <label for="id_producto">Producto</label>
+    <select id="id_producto" name="id_producto">
+      {% for p in productos %}<option value="{{ p[0] }}">{{ p[1] }}  {{ p[2] }}  |  {{ p[3]|dinero }}  |  {{ p[4] }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="campo corto">
+    <label for="cantidad">Cantidad</label>
+    <input type="number" id="cantidad" name="cantidad" min="1" value="1">
+  </div>
+  <button class="btn" type="submit">&lt; Agregar &gt;</button>
+</form>
+
+<h3>── 2. Carrito ({{ lineas|length }} producto/s) ──</h3>
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>#</th><th>código</th><th>producto</th><th>proveedor</th><th>cantidad</th><th>precio_unitario</th><th>valor</th><th></th></tr></thead>
+  <tbody>
+    {% for l in lineas %}
+    <tr>
+      <td class="num">{{ loop.index }}</td><td>{{ l.codigo }}</td><td>{{ l.producto }}</td><td>{{ l.proveedor }}</td>
+      <td class="num">{{ l.cantidad }}</td><td class="num">{{ l.precio|dinero }}</td><td class="num">{{ l.valor|dinero }}</td>
+      <td class="acciones">
+        <form method="post" class="en-linea">
+          <input type="hidden" name="accion" value="quitar"><input type="hidden" name="indice" value="{{ l.indice }}">
+          <button class="btn-link">[quitar]</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="vacio">El carrito está vacío. Agregue productos.</td></tr>
+    {% endfor %}
+  </tbody>
+  {% if lineas %}
+  <tfoot><tr><td colspan="6" class="num">TOTAL</td><td class="num brillante">{{ total|dinero }}</td><td></td></tr></tfoot>
+  {% endif %}
+</table>
+</div>
+
+<h3>── 3. Cliente y confirmación ──</h3>
+<form method="post" class="fila-form">
+  <input type="hidden" name="accion" value="confirmar">
+  <div class="campo ancho">
+    <label for="id_cliente">Cliente que realiza el pedido</label>
+    <select id="id_cliente" name="id_cliente">
+      {% for id, texto in clientes %}<option value="{{ id }}" {{ 'selected' if id == cliente_actual }}>{{ texto }}</option>{% endfor %}
+    </select>
+  </div>
+  <button class="btn primario" type="submit" {{ 'disabled' if not lineas }}>&lt; Confirmar pedido &gt;</button>
+</form>
+{% if lineas %}
+<form method="post" class="en-linea">
+  <input type="hidden" name="accion" value="vaciar">
+  <button class="btn">&lt; Vaciar carrito &gt;</button>
+</form>
+{% endif %}
+<p class="ayuda">Al confirmar se insertan el pedido y su detalle en una sola transacción (BEGIN … COMMIT).
+El precio de compra queda guardado aunque después cambie el precio del producto.</p>
+{% endblock %}

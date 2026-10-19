@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titulo %}{{ cfg.titulo }} · {{ accion }}{% endblock %}
+{% block contenido %}
+<form method="post" class="formulario">
+  <div class="campos">
+    {% for c in cfg.campos %}
+    {% set valor = valores.get(c.col) or '' %}
+    <div class="campo">
+      <label for="{{ c.col }}">{{ c.label }}</label>
+      {% if c.tipo == 'select' %}
+        <select id="{{ c.col }}" name="{{ c.col }}">
+          {% for v, texto in c.opciones %}<option value="{{ v }}" {{ 'selected' if v == valor }}>{{ texto }}</option>{% endfor %}
+        </select>
+      {% elif c.tipo == 'fk' %}
+        <select id="{{ c.col }}" name="{{ c.col }}">
+          {% for id, texto in opciones_fk(c) %}<option value="{{ id }}" {{ 'selected' if id|string == valor|string }}>{{ id }} - {{ texto }}</option>{% endfor %}
+        </select>
+      {% elif c.tipo == 'fecha' %}
+        <input type="date" id="{{ c.col }}" name="{{ c.col }}" value="{{ valor }}">
+      {% elif c.tipo == 'numero' %}
+        <input type="number" step="any" id="{{ c.col }}" name="{{ c.col }}" value="{{ '%.0f'|format(valor) if valor is number else valor }}">
+      {% else %}
+        <input id="{{ c.col }}" name="{{ c.col }}" value="{{ valor }}" placeholder="{{ c.placeholder or '' }}">
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="botones">
+    <button class="btn primario" type="submit">&lt; Guardar &gt;</button>
+    <a class="btn" href="{{ url_for('listar', nombre=nombre) }}">&lt; Cancelar &gt;</a>
+  </div>
+</form>
+<p class="ayuda">Las restricciones (UNIQUE, CHECK, NOT NULL, FOREIGN KEY) las valida la base de datos.</p>
+{% endblock %}

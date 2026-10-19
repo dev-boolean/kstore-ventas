@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import tabla with context %}
+{% block titulo %}Inicio / Status{% endblock %}
+{% block contenido %}
+<div class="dos-columnas">
+  <div>
+    <pre class="ascii brillante">{{ banner }}</pre>
+    <pre class="ascii tenue">  {{ EMPRESA }}  ·  NIT {{ nit }}
+  Sistema de Pedidos v{{ VERSION }}</pre>
+    <pre class="ascii"><span class="k">  Integrantes:</span>
+{% for n in integrantes %}<span class="v">   · {{ n }}</span>
+{% endfor %}</pre>
+  </div>
+  <div>
+    <h3>── Status ──</h3>
+    <pre class="ascii">{% for k, v in estado %}<span class="k">{{ '%-22s'|format(k) }}</span><span class="v">{{ v }}</span>
+{% endfor %}</pre>
+  </div>
+</div>
+<h3>── Últimos pedidos ──</h3>
+{{ tabla(ultimos) }}
+{% endblock %}

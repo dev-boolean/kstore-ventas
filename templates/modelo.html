@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import tabla with context %}
+{% block titulo %}Modelo E-R{% endblock %}
+{% block contenido %}
+<div class="pestanas">
+  <a href="{{ url_for('modelo', v='er') }}" class="{{ 'activo' if vista == 'er' }}">[1] Diagrama E-R</a>
+  <a href="{{ url_for('modelo', v='relacional') }}" class="{{ 'activo' if vista == 'relacional' }}">[2] Modelo relacional</a>
+  <a href="{{ url_for('modelo', v='diccionario') }}" class="{{ 'activo' if vista == 'diccionario' }}">[3] Diccionario de datos</a>
+  <a href="{{ url_for('modelo', v='ddl') }}" class="{{ 'activo' if vista == 'ddl' }}">[4] Script de creación</a>
+</div>
+
+{% if vista == 'er' %}
+  <pre class="ascii">{{ diagrama }}</pre>
+  <p class="ayuda">PK clave primaria · FK clave foránea · UQ único · CK restricción CHECK · 1 ──&lt; N relación uno a muchos.
+  DETALLE_PEDIDO resuelve la relación muchos a muchos: un cliente compra varios productos (en sus pedidos)
+  y un producto es comprado por varios clientes.</p>
+
+{% elif vista == 'relacional' %}
+  <pre class="ascii relacional">{% for tabla_nombre, columnas in relacional %}<span class="brillante">{{ tabla_nombre }}</span> ( {% for col, pk, fk in columnas %}{% if pk %}<u>{{ col }}</u>{% else %}{{ col }}{% endif %}{% if fk %}<span class="k">#→{{ fk }}</span>{% endif %}{{ ', ' if not loop.last }}{% endfor %} )
+{% endfor %}</pre>
+  <p class="ayuda">Subrayado = clave primaria · #→TABLA = clave foránea que referencia a esa tabla.
+  DETALLE_PEDIDO tiene clave primaria compuesta (id_pedido, id_producto), y cada parte es a la vez clave foránea.</p>
+
+{% elif vista == 'diccionario' %}
+  <div class="pestanas sub">
+    {% for t in tablas %}<a href="{{ url_for('modelo', v='diccionario', t=t) }}" class="{{ 'activo' if t == tabla_actual }}">{{ t }}</a>{% endfor %}
+  </div>
+  <h3>── Columnas de {{ tabla_actual }} ──</h3>
+  {{ tabla(columnas) }}
+  <h3>── Claves foráneas ──</h3>
+  {% if fks|length %}{{ tabla(fks) }}{% else %}<p class="ayuda">Esta tabla no tiene claves foráneas.</p>{% endif %}
+  <h3>── Definición con restricciones ──</h3>
+  <pre class="codigo">{{ restricciones }}</pre>
+
+{% else %}
+  <p><a class="btn" href="{{ url_for('descargar', nombre='schema.sql') }}">&lt; Descargar schema.sql &gt;</a></p>
+  <pre class="codigo">{{ ddl }}</pre>
+{% endif %}
+{% endblock %}

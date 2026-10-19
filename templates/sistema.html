@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titulo %}Sistema{% endblock %}
+{% block contenido %}
+<div class="dos-columnas">
+  <div>
+    <h3>── Acerca de ──</h3>
+    <pre class="ascii"><span class="k">Proyecto   :</span> {{ CURSO }}
+<span class="k">Empresa    :</span> {{ EMPRESA }}
+<span class="k">Tecnología :</span> Python · Flask · SQLite
+<span class="k">Integrantes:</span>
+{% for n in integrantes %}<span class="v">   - {{ n }}</span>
+{% endfor %}</pre>
+  </div>
+  <div>
+    <h3>── Descargas ──</h3>
+    <ul class="lista-simple">
+      {% for nombre in descargas %}<li><a href="{{ url_for('descargar', nombre=nombre) }}">[descargar] {{ nombre }}</a></li>{% endfor %}
+    </ul>
+    <h3>── Reiniciar ──</h3>
+    <p class="ayuda">Borra todo y vuelve a cargar los datos de ejemplo (schema.sql + seed.sql). Afecta a todos los usuarios.</p>
+    <form method="post" action="{{ url_for('reiniciar') }}"
+          data-confirmar="¿Reiniciar la base de datos? Se pierden los cambios hechos.">
+      <button class="btn primario">&lt; Reiniciar base de datos &gt;</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

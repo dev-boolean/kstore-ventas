@@ -1,0 +1,121 @@
+/* KStore · interfaz estilo terminal (paleta "Campbell" de la terminal de Windows) */
+:root {
+  --fondo: #0C0C0C;
+  --fondo2: #1E1E1E;
+  --gris: #A0A0A0;
+  --texto: #CCCCCC;
+  --brillante: #F2F2F2;
+  --tenue: #767676;
+  /* Fuentes del sistema con caracteres de caja (─│┌┐) del mismo ancho: los dibujos alinean */
+  --mono: "Cascadia Mono", Consolas, Menlo, "DejaVu Sans Mono", "Liberation Mono", "Courier New", monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--fondo); color: var(--texto); }
+body { font: 14px/1.4 var(--mono); padding: 8px 12px; min-height: 100vh; display: flex; flex-direction: column; gap: 8px; }
+a { color: var(--texto); }
+u { text-underline-offset: 2px; }
+h3 { font-size: 14px; color: var(--brillante); margin: 14px 0 6px; }
+
+/* ---------- barras superior e inferior ---------- */
+.barra-top, .barra-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; padding: 1px 10px; }
+.barra-top { background: var(--texto); color: #000; font-weight: 700; }
+.barra-bottom { background: var(--gris); color: #000; }
+.barra-bottom b { text-decoration: underline; }
+
+/* ---------- cajas con borde doble ---------- */
+.cuerpo { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 8px; flex: 1; }
+.caja { border: 3px double var(--gris); padding: 10px 14px 14px; min-width: 0; }
+.titulo-caja { display: inline-flex; gap: 10px; align-items: center; background: var(--gris); color: #000;
+               padding: 0 8px; font-weight: 700; margin-bottom: 8px; }
+
+/* ---------- menú lateral ---------- */
+.menu { list-style: none; margin: 0; padding: 0; }
+.menu a { display: block; padding: 3px 8px; text-decoration: none; white-space: nowrap; outline: none; }
+.menu a u { font-weight: 700; color: var(--brillante); }
+.menu a:hover, .menu a:focus { background: var(--fondo2); }
+.menu a.activo { background: var(--texto); color: #000; }
+.menu a.activo u { color: #000; }
+.menu a.activo:focus { outline: 1px dashed var(--brillante); outline-offset: 1px; }
+
+/* ---------- botones tipo <Select> ---------- */
+.btn, button.btn { display: inline-block; font: inherit; font-weight: 700; padding: 3px 10px; border: 0; border-radius: 0;
+                   background: var(--gris); color: #000; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.btn:hover, .btn:focus { background: var(--brillante); outline: none; }
+.btn.primario { background: var(--texto); }
+.btn:disabled { background: #333; color: #777; cursor: not-allowed; }
+.btn-link, .btn-mini { font: inherit; background: none; border: 0; color: var(--texto); cursor: pointer; padding: 0; text-decoration: underline; }
+.btn-mini { color: #000; font-weight: 400; font-size: 12px; }
+.en-linea { display: inline; margin: 0; }
+.botones { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+
+/* ---------- formularios ---------- */
+label { display: block; color: var(--gris); margin-bottom: 3px; }
+input, select, textarea { font: inherit; color: var(--texto); background: var(--fondo2); border: 1px solid var(--tenue);
+                          border-radius: 0; padding: 5px 8px; width: 100%; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brillante); }
+input[type="date"] { color-scheme: dark; }
+.formulario { border: 1px solid var(--tenue); padding: 12px; }
+.campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+.fila-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.fila-form .campo.ancho { flex: 1 1 380px; }
+.fila-form .campo.corto { flex: 0 0 110px; }
+.barra-acciones { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 10px; }
+.buscar { display: flex; gap: 8px; align-items: center; flex: 1; min-width: 260px; }
+.buscar label { margin: 0; }
+.buscar input { max-width: 420px; }
+
+/* ---------- tablas ---------- */
+.tabla-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 3px 10px; text-align: left; white-space: nowrap; }
+th { background: var(--fondo2); color: var(--brillante); border-bottom: 1px solid var(--gris); }
+tbody tr:hover { background: var(--fondo2); }
+td.num { text-align: right; }
+td.vacio { color: var(--tenue); text-align: center; padding: 10px; }
+td.acciones a { margin-right: 8px; }
+tfoot td { border-top: 1px solid var(--gris); font-weight: 700; }
+
+/* ---------- mensajes ---------- */
+.msg { padding: 4px 10px; margin: 0 0 10px; border-left: 4px solid var(--texto); }
+.msg-ok { background: var(--fondo2); }
+.msg-err { background: var(--texto); color: #000; font-weight: 700; }
+.msg-warn { border: 1px dashed var(--texto); border-left-width: 4px; }
+
+/* ---------- bloques de texto tipo terminal ---------- */
+pre { margin: 0; font: inherit; }
+.ascii { white-space: pre; overflow-x: auto; line-height: 1.2; }
+.codigo { white-space: pre; overflow-x: auto; background: var(--fondo2); padding: 10px; border: 1px solid var(--tenue); }
+.relacional { line-height: 1.9; }
+.k { color: var(--gris); }
+.v, .brillante { color: var(--brillante); font-weight: 700; }
+.tenue, .ayuda { color: var(--tenue); }
+.ayuda { font-size: 12.5px; margin: 6px 0; }
+details { margin-top: 12px; }
+summary { cursor: pointer; color: var(--gris); }
+.lista-simple { list-style: none; padding: 0; margin: 0; line-height: 1.8; }
+
+/* ---------- pestañas ([1] [2] [3]) ---------- */
+.pestanas { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; }
+.pestanas a { text-decoration: none; padding: 1px 6px; }
+.pestanas a:hover { background: var(--fondo2); }
+.pestanas a.activo { background: var(--texto); color: #000; }
+.pestanas.sub a { border: 1px solid var(--tenue); }
+
+/* ---------- distribución ---------- */
+.dos-columnas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.consola { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 16px; }
+.consola textarea { resize: vertical; min-height: 140px; }
+
+/* ---------- bitácora SQL ---------- */
+.bitacora { height: 150px; overflow-y: auto; white-space: pre; font-size: 12px; line-height: 1.35; }
+.bitacora .t { color: var(--tenue); }
+.bitacora .ok { color: var(--gris); }
+.bitacora .err { background: var(--texto); color: #000; }
+.bitacora .tx { color: var(--brillante); font-weight: 700; }
+
+/* ---------- pantallas pequeñas ---------- */
+@media (max-width: 820px) {
+  .cuerpo, .dos-columnas, .consola, .campos { grid-template-columns: minmax(0, 1fr); }
+  .menu { display: flex; flex-wrap: wrap; }
+}

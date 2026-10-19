@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import tabla with context %}
+{% block titulo %}{{ cfg.titulo }}{% endblock %}
+{% block contenido %}
+<div class="barra-acciones">
+  <a class="btn primario" href="{{ url_for('nuevo', nombre=nombre) }}">&lt; Nuevo {{ cfg.singular|lower }} &gt;</a>
+  <form method="get" class="buscar">
+    <label for="q">Buscar:</label>
+    <input id="q" name="q" value="{{ q }}" placeholder="Escriba y presione Enter...">
+    {% if q %}<a class="btn" href="{{ url_for('listar', nombre=nombre) }}">&lt; Limpiar &gt;</a>{% endif %}
+  </form>
+</div>
+{% call(fila) tabla(res, acciones=true) %}
+  <a href="{{ url_for('editar', nombre=nombre, id=fila.id) }}">[editar]</a>
+  <a href="{{ url_for('eliminar', nombre=nombre, id=fila.id) }}">[eliminar]</a>
+{% endcall %}
+{% endblock %}

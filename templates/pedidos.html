@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import tabla with context %}
+{% block titulo %}Pedidos{% endblock %}
+{% block contenido %}
+<div class="barra-acciones">
+  <a class="btn primario" href="{{ url_for('pedido_nuevo') }}">&lt; Nuevo pedido &gt;</a>
+  <form method="get" class="buscar">
+    <label for="q">Cliente:</label>
+    <input id="q" name="q" value="{{ q }}" placeholder="Filtrar por nombre...">
+    {% if q %}<a class="btn" href="{{ url_for('pedidos') }}">&lt; Limpiar &gt;</a>{% endif %}
+  </form>
+</div>
+{% call(fila) tabla(res, acciones=true) %}
+  <a href="{{ url_for('pedido_detalle', id=fila.pedido) }}">[ver]</a>
+{% endcall %}
+{% endblock %}

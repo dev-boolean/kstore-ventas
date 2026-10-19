@@ -11,8 +11,6 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-import pandas as pd
-
 from documentos import formatear
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -26,12 +24,26 @@ class DBError(Exception):
     """Error de base de datos con un mensaje entendible para el usuario."""
 
 
+class Resultado:
+    """Filas de un SELECT con los nombres de sus columnas."""
+
+    def __init__(self, columnas, filas):
+        self.columnas = columnas
+        self.filas = filas
+
+    def __len__(self):
+        return len(self.filas)
+
+    def __iter__(self):
+        return (dict(zip(self.columnas, f)) for f in self.filas)
+
+
 def _connect():
     DB_PATH.parent.mkdir(exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     # SQLite trae las claves foráneas desactivadas por defecto
     conn.execute("PRAGMA foreign_keys = ON")
-    # Función SQL propia: formato_doc('NIT', '900123456-8') -> '900.123.456-8'
+    # Función SQL propia: formato_doc('CC', '1045678912') -> '1.045.678.912'
     conn.create_function("formato_doc", 2, formatear)
     return conn
 
@@ -41,7 +53,7 @@ def init_db(reset=False):
     conn = _connect()
     try:
         existe = conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'venta'"
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'detalle_pedido'"
         ).fetchone()
         if reset or not existe:
             conn.executescript((SQL_DIR / "schema.sql").read_text(encoding="utf-8"))
@@ -69,7 +81,7 @@ def traducir_error(e):
     return msg
 
 
-def _formatear(sql, params):
+def _formatear_sql(sql, params):
     """Arma la sentencia con los parámetros incrustados, solo para mostrarla."""
     texto = re.sub(r"\s+", " ", sql).strip()
     for p in params:
@@ -105,11 +117,13 @@ def dividir_sentencias(script):
 
 class Database:
     def __init__(self, log):
-        # log es una lista guardada en st.session_state (una por usuario)
+        # log es la bitácora de la sesión del usuario (lista de tuplas)
         self.log = log
 
     # ------------------------------------------------------------ bitácora
     def _registrar(self, estado, texto):
+        if self.log and self.log[-1][1:] == (estado, texto):
+            return  # no repetir la misma línea seguida
         self.log.append((datetime.now().strftime("%H:%M:%S"), estado, texto))
         del self.log[:-MAX_LOG]
 
@@ -118,25 +132,21 @@ class Database:
         try:
             cur = conn.execute(sql, params)
         except sqlite3.Error as e:
-            self._registrar("ERR", _formatear(sql, params) + "  -->  " + str(e))
+            self._registrar("ERR", _formatear_sql(sql, params) + "  -->  " + str(e))
             raise
         detalle = ""
         if cur.description is None and cur.rowcount >= 0:
             detalle = f"  ({cur.rowcount} fila(s))"
-        self._registrar("OK", _formatear(sql, params) + detalle)
+        self._registrar("OK", _formatear_sql(sql, params) + detalle)
         return cur
 
     # ------------------------------------------------------------ lectura
     def consultar(self, sql, params=(), registrar=True):
-        """SELECT que devuelve un DataFrame."""
+        """SELECT que devuelve un Resultado (columnas + filas)."""
         conn = _connect()
         try:
-            if registrar:
-                cur = self._ejecutar(conn, sql, params)
-            else:
-                cur = conn.execute(sql, tuple(params))
-            columnas = [c[0] for c in cur.description]
-            return pd.DataFrame(cur.fetchall(), columns=columnas)
+            cur = self._ejecutar(conn, sql, params) if registrar else conn.execute(sql, tuple(params))
+            return Resultado([c[0] for c in cur.description], cur.fetchall())
         except sqlite3.Error as e:
             raise DBError(traducir_error(e)) from e
         finally:
@@ -196,19 +206,15 @@ class Database:
     def ejecutar_script(self, script):
         """Consola SQL: ejecuta varias sentencias en una sola transacción.
 
-        Devuelve una lista de (sentencia, DataFrame o None, filas afectadas).
+        Devuelve una lista de (sentencia, Resultado o None, filas afectadas).
         """
-        sentencias = dividir_sentencias(script)
-        if not sentencias:
-            return []
         resultados = []
         with self.transaccion() as run:
-            for s in sentencias:
+            for s in dividir_sentencias(script):
                 cur = run(s)
                 if cur.description is not None:
-                    columnas = [c[0] for c in cur.description]
-                    df = pd.DataFrame(cur.fetchall(), columns=columnas)
-                    resultados.append((s, df, len(df)))
+                    res = Resultado([c[0] for c in cur.description], cur.fetchall())
+                    resultados.append((s, res, len(res)))
                 else:
                     resultados.append((s, None, cur.rowcount))
         return resultados
@@ -218,25 +224,22 @@ class Database:
         self._registrar("TX", "Base de datos recreada (schema.sql + seed.sql)")
 
 
-def cargar_reportes():
-    """Lee sql/consultas.sql y devuelve la lista de reportes."""
+def cargar_consultas():
+    """Lee sql/consultas.sql y devuelve la lista de consultas."""
     texto = (SQL_DIR / "consultas.sql").read_text(encoding="utf-8")
     bloques = re.split(r"^-- @ (.+)$", texto, flags=re.MULTILINE)
-    reportes = []
+    consultas = []
     # bloques = [cabecera, titulo1, cuerpo1, titulo2, cuerpo2, ...]
     for titulo, cuerpo in zip(bloques[1::2], bloques[2::2]):
-        descripcion, grafico, sql = [], None, []
+        descripcion, sql = [], []
         for linea in cuerpo.strip().splitlines():
-            if linea.startswith("-- grafico:"):
-                grafico = [c.strip() for c in linea.split(":", 1)[1].split(",")]
-            elif linea.startswith("--") and not sql:
+            if linea.startswith("--") and not sql:
                 descripcion.append(linea[2:].strip())
             else:
                 sql.append(linea)
-        reportes.append({
+        consultas.append({
             "titulo": titulo.strip(),
             "descripcion": " ".join(descripcion),
-            "grafico": grafico,
             "sql": "\n".join(sql).strip(),
         })
-    return reportes
+    return consultas
