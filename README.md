@@ -153,3 +153,7 @@ Abrir `http://localhost:5000`.
 
 En el plan gratuito, el servicio se duerme tras 15 minutos sin uso; la primera visita después tarda cerca de
 un minuto. El disco no es permanente: al reiniciarse, la base vuelve a los datos de ejemplo.
+
+**Mantenerla despierta:** crear un cronjob gratis en <https://cron-job.org> que visite
+`https://<su-app>.onrender.com/health` cada 10 minutos. Esa ruta solo responde `ok`: no toca la base de datos
+ni crea sesión. Un servicio despierto todo el mes usa unas 744 de las 750 horas gratis de Render.

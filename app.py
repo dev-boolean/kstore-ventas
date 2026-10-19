@@ -617,6 +617,13 @@ def descargar(nombre):
     return send_file(DESCARGAS[nombre], as_attachment=True, download_name=nombre)
 
 
+@app.route("/health")
+def health():
+    """Ruta liviana para el ping de cron-job.org: mantiene despierta la app en Render.
+    No toca la base de datos ni crea sesión (no genera bitácora en memoria)."""
+    return "ok", 200, {"Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store"}
+
+
 @app.errorhandler(404)
 def no_encontrado(_):
     return render_template("error.html", menu="", mensaje="404 · La página no existe."), 404
