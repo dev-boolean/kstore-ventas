@@ -1,11 +1,3 @@
-"""KStore S.A.S. - Sistema de Pedidos (Laboratorio 01 - Bases de Datos).
-
-Aplicación web en Flask con interfaz estilo terminal (ncurses / menuconfig)
-sobre una base de datos relacional SQLite.
-
-Ejecutar en el computador:   python app.py      -> http://localhost:5000
-En el servidor (Render):     gunicorn app:app
-"""
 import os
 import sqlite3
 import uuid
@@ -18,7 +10,6 @@ from db import (DB_PATH, SQL_DIR, Database, DBError, cargar_consultas,
                 init_db)
 from documentos import formatear, normalizar
 
-# ---------------------------------------------------------------- datos fijos
 EMPRESA = "KStore S.A.S."
 NIT_EMPRESA = "901.555.777-4"
 VERSION = "2.0"
@@ -48,18 +39,15 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "kstore-laboratorio-01")
 init_db()
 
-# Bitácora SQL de cada visitante (se guarda en memoria del servidor)
 BITACORAS = {}
 
 
 def bd():
-    """Base de datos con la bitácora de la sesión actual."""
     if "sid" not in session:
         session["sid"] = uuid.uuid4().hex
     return Database(BITACORAS.setdefault(session["sid"], []))
 
 
-# ---------------------------------------------------------------- filtros
 @app.template_filter("dinero")
 def dinero(v):
     return "$ " + f"{(v or 0):,.0f}".replace(",", ".")
@@ -86,7 +74,6 @@ def contexto():
     }
 
 
-# ---------------------------------------------------------------- CRUD genérico
 def validar_cliente(v):
     v["identificacion"] = normalizar(v["tipo_doc"], v["identificacion"])
     if v["fecha_nacimiento"] and v["fecha_nacimiento"] > date.today().isoformat():
@@ -173,7 +160,6 @@ def opciones_fk(campo):
 
 
 def leer_formulario(cfg):
-    """Toma los campos del formulario; un texto vacío se guarda como NULL (NOT NULL actúa)."""
     valores = {}
     for c in cfg["campos"]:
         valor = request.form.get(c["col"], "").strip()
@@ -194,7 +180,6 @@ def listar(nombre):
     sql = f"SELECT * FROM ({cfg['listar']}) AS t"
     params = []
     if texto:
-        # Se ignoran los puntos para encontrar 1045678912 aunque se muestre 1.045.678.912
         sql += " WHERE " + " OR ".join(f"REPLACE({c}, '.', '') LIKE ?" for c in cfg["buscar"])
         params = [f"%{texto.replace('.', '')}%"] * len(cfg["buscar"])
     sql += f" ORDER BY {cfg['orden']}"
@@ -262,7 +247,6 @@ def eliminar(nombre, id):
     return render_template("eliminar.html", menu=nombre, cfg=cfg, nombre=nombre, fila=fila, id=id)
 
 
-# ---------------------------------------------------------------- inicio
 LETRAS_BANNER = {
     "K": [" _  __", "| |/ /", "| ' < ", "|_|\\_\\", "      "],
     "S": ["  ___ ", " / __|", " \\__ \\", " |___/", "      "],
@@ -297,7 +281,6 @@ def inicio():
                            ultimos=ultimos, integrantes=INTEGRANTES, nit=NIT_EMPRESA)
 
 
-# ---------------------------------------------------------------- pedidos
 @app.route("/pedidos")
 def pedidos():
     texto = request.args.get("q", "").strip()
@@ -352,7 +335,6 @@ def pedido_nuevo():
                 flash("Elija el cliente y agregue al menos un producto.", "warn")
             else:
                 try:
-                    # Pedido + detalle en una sola transacción: o se guarda todo o nada
                     with d.transaccion() as run:
                         id_pedido = run("INSERT INTO pedido (id_cliente) VALUES (?)", (id_cliente,)).lastrowid
                         for it in items:
@@ -434,7 +416,6 @@ def pedido_eliminar(id):
     return redirect(url_for("pedidos"))
 
 
-# ---------------------------------------------------------------- consultas
 @app.route("/consultas")
 def consultas():
     lista = cargar_consultas()
@@ -448,7 +429,6 @@ def consultas():
                            res=res, error=error)
 
 
-# ---------------------------------------------------------------- consola SQL
 EJEMPLOS_SQL = {
     "Listar tablas": "SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view') ORDER BY name;",
     "Pedidos con su cliente (JOIN)": (
@@ -486,7 +466,6 @@ def consola():
                            error=error, tablas=tablas, ejemplos=EJEMPLOS_SQL)
 
 
-# ---------------------------------------------------------------- modelo E-R
 ENTIDADES_ER = {
     "PROVEEDOR": ["PK id_proveedor", "   nit           UQ,CK", "   nombre", "   direccion"],
     "PRODUCTO": ["PK id_producto", "   codigo           UQ", "   nombre", "   precio_unitario  CK",
@@ -499,7 +478,6 @@ ENTIDADES_ER = {
 
 
 def diagrama_er():
-    """Dibuja el diagrama entidad-relación con caracteres de caja."""
     ancho, alto = 92, 24
     lienzo = [[" "] * ancho for _ in range(alto)]
 
@@ -516,12 +494,12 @@ def diagrama_er():
             poner(x, y + 3 + i, "│ " + c.ljust(w - 3) + "│")
         poner(x, y + 3 + len(campos), "└" + "─" * (w - 2) + "┘")
 
-    def horizontal(x1, x2, y):  # de la entidad "1" (izquierda) a la "N" (derecha)
+    def horizontal(x1, x2, y):
         poner(x1, y, "┤" + "─" * (x2 - x1 - 2) + "<")
         poner(x1 + 1, y - 1, "1")
         poner(x2 - 2, y - 1, "N")
 
-    def vertical(x, y1, y2):  # de la entidad "1" (arriba) a la "N" (abajo)
+    def vertical(x, y1, y2):
         poner(x, y1 - 1, "┬")
         poner(x, y2 + 1, "┴")
         for y in range(y1, y2 + 1):
@@ -535,14 +513,13 @@ def diagrama_er():
     caja(0, 12, "CLIENTE")
     caja(33, 12, "PEDIDO")
     caja(66, 12, "DETALLE_PEDIDO")
-    horizontal(58, 66, 3)    # PROVEEDOR 1 ──< N PRODUCTO
-    horizontal(25, 33, 15)   # CLIENTE   1 ──< N PEDIDO
-    horizontal(58, 66, 15)   # PEDIDO    1 ──< N DETALLE_PEDIDO
-    vertical(78, 9, 11)      # PRODUCTO  1 ──< N DETALLE_PEDIDO
+    horizontal(58, 66, 3)
+    horizontal(25, 33, 15)
+    horizontal(58, 66, 15)
+    vertical(78, 9, 11)
     return "\n".join("".join(f).rstrip() for f in lienzo).rstrip()
 
 
-# Modelo relacional: (tabla, [(columna, es_pk, referencia_fk)])
 MODELO_RELACIONAL = [
     ("PROVEEDOR", [("id_proveedor", True, None), ("nit", False, None), ("nombre", False, None),
                    ("direccion", False, None)]),
@@ -586,7 +563,6 @@ def modelo():
     return render_template("modelo.html", menu="modelo", vista=vista, tablas=TABLAS, **contexto_vista)
 
 
-# ---------------------------------------------------------------- sistema
 DESCARGAS = {"kstore.db": DB_PATH, "schema.sql": SQL_DIR / "schema.sql", "seed.sql": SQL_DIR / "seed.sql",
              "consultas.sql": SQL_DIR / "consultas.sql", "ejemplos_dml.sql": SQL_DIR / "ejemplos_dml.sql"}
 
@@ -619,8 +595,6 @@ def descargar(nombre):
 
 @app.route("/health")
 def health():
-    """Ruta liviana para el ping de cron-job.org: mantiene despierta la app en Render.
-    No toca la base de datos ni crea sesión (no genera bitácora en memoria)."""
     return "ok", 200, {"Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store"}
 
 

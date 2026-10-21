@@ -1,10 +1,3 @@
-"""Capa de acceso a datos: SQLite + registro de cada sentencia ejecutada.
-
-Toda la aplicación pasa por la clase Database, que abre una conexión por
-operación, activa las claves foráneas, registra el SQL en una bitácora
-(el panel "Mensajes" de la interfaz) y traduce los errores de integridad
-a mensajes en español.
-"""
 import re
 import sqlite3
 from contextlib import contextmanager
@@ -21,11 +14,10 @@ MAX_LOG = 200
 
 
 class DBError(Exception):
-    """Error de base de datos con un mensaje entendible para el usuario."""
+    pass
 
 
 class Resultado:
-    """Filas de un SELECT con los nombres de sus columnas."""
 
     def __init__(self, columnas, filas):
         self.columnas = columnas
@@ -41,15 +33,12 @@ class Resultado:
 def _connect():
     DB_PATH.parent.mkdir(exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
-    # SQLite trae las claves foráneas desactivadas por defecto
     conn.execute("PRAGMA foreign_keys = ON")
-    # Función SQL propia: formato_doc('CC', '1045678912') -> '1.045.678.912'
     conn.create_function("formato_doc", 2, formatear)
     return conn
 
 
 def init_db(reset=False):
-    """Crea las tablas y carga los datos de ejemplo si la BD no existe."""
     conn = _connect()
     try:
         existe = conn.execute(
@@ -64,7 +53,6 @@ def init_db(reset=False):
 
 
 def traducir_error(e):
-    """Convierte los mensajes de SQLite en mensajes claros en español."""
     msg = str(e)
     if "UNIQUE constraint failed" in msg:
         campo = msg.split(":", 1)[1].strip()
@@ -82,7 +70,6 @@ def traducir_error(e):
 
 
 def _formatear_sql(sql, params):
-    """Arma la sentencia con los parámetros incrustados, solo para mostrarla."""
     texto = re.sub(r"\s+", " ", sql).strip()
     for p in params:
         if p is None:
@@ -103,7 +90,6 @@ def _quitar_comentarios_iniciales(sentencia):
 
 
 def dividir_sentencias(script):
-    """Separa un script en sentencias completas (respeta triggers y cadenas)."""
     sentencias, actual = [], ""
     for trozo in script.split(";"):
         actual += trozo + ";"
@@ -117,13 +103,11 @@ def dividir_sentencias(script):
 
 class Database:
     def __init__(self, log):
-        # log es la bitácora de la sesión del usuario (lista de tuplas)
         self.log = log
 
-    # ------------------------------------------------------------ bitácora
     def _registrar(self, estado, texto):
         if self.log and self.log[-1][1:] == (estado, texto):
-            return  # no repetir la misma línea seguida
+            return
         self.log.append((datetime.now().strftime("%H:%M:%S"), estado, texto))
         del self.log[:-MAX_LOG]
 
@@ -140,9 +124,7 @@ class Database:
         self._registrar("OK", _formatear_sql(sql, params) + detalle)
         return cur
 
-    # ------------------------------------------------------------ lectura
     def consultar(self, sql, params=(), registrar=True):
-        """SELECT que devuelve un Resultado (columnas + filas)."""
         conn = _connect()
         try:
             cur = self._ejecutar(conn, sql, params) if registrar else conn.execute(sql, tuple(params))
@@ -153,7 +135,6 @@ class Database:
             conn.close()
 
     def valor(self, sql, params=()):
-        """Primer valor de un SELECT (sin registrar en la bitácora)."""
         conn = _connect()
         try:
             fila = conn.execute(sql, tuple(params)).fetchone()
@@ -162,7 +143,6 @@ class Database:
             conn.close()
 
     def fila(self, sql, params=()):
-        """Primera fila de un SELECT como diccionario (sin registrar)."""
         conn = _connect()
         conn.row_factory = sqlite3.Row
         try:
@@ -171,21 +151,12 @@ class Database:
         finally:
             conn.close()
 
-    # ------------------------------------------------------------ escritura
     def ejecutar(self, sql, params=()):
-        """INSERT / UPDATE / DELETE individual. Devuelve el id insertado."""
         with self.transaccion() as run:
             return run(sql, params).lastrowid
 
     @contextmanager
     def transaccion(self):
-        """Agrupa varias sentencias: o se guardan todas o ninguna.
-
-        Uso:
-            with db.transaccion() as run:
-                run("INSERT ...", (...))
-                run("UPDATE ...", (...))
-        """
         conn = _connect()
         self._registrar("TX", "BEGIN TRANSACTION")
         try:
@@ -204,10 +175,6 @@ class Database:
             conn.close()
 
     def ejecutar_script(self, script):
-        """Consola SQL: ejecuta varias sentencias en una sola transacción.
-
-        Devuelve una lista de (sentencia, Resultado o None, filas afectadas).
-        """
         resultados = []
         with self.transaccion() as run:
             for s in dividir_sentencias(script):
@@ -225,11 +192,9 @@ class Database:
 
 
 def cargar_consultas():
-    """Lee sql/consultas.sql y devuelve la lista de consultas."""
     texto = (SQL_DIR / "consultas.sql").read_text(encoding="utf-8")
     bloques = re.split(r"^-- @ (.+)$", texto, flags=re.MULTILINE)
     consultas = []
-    # bloques = [cabecera, titulo1, cuerpo1, titulo2, cuerpo2, ...]
     for titulo, cuerpo in zip(bloques[1::2], bloques[2::2]):
         descripcion, sql = [], []
         for linea in cuerpo.strip().splitlines():

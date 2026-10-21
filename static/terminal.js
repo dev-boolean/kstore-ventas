@@ -1,9 +1,6 @@
-// KStore · atajos de teclado estilo terminal
-// 0-9 abren la opción del menú, ↑↓ se mueven por el menú, Enter la abre, Esc vuelve al inicio.
 (function () {
   const menu = Array.from(document.querySelectorAll('.menu a'));
 
-  // Al cargar, el foco queda en la opción activa para poder usar las flechas de una vez
   const activo = document.querySelector('.menu a.activo');
   if (activo && !document.querySelector('[autofocus]')) activo.focus({ preventScroll: true });
 
@@ -11,7 +8,6 @@
     const t = e.target;
     const tag = (t.tagName || '').toLowerCase();
 
-    // Ctrl+Enter ejecuta la consola SQL
     if (t.id === 'sql' && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       t.form.submit();
@@ -36,7 +32,6 @@
     }
   });
 
-  // Consola SQL: elegir un ejemplo lo copia en el área de texto
   const ejemplo = document.getElementById('ejemplo');
   if (ejemplo) {
     ejemplo.addEventListener('change', function () {
@@ -44,7 +39,6 @@
     });
   }
 
-  // Confirmación antes de acciones que borran datos
   document.querySelectorAll('form[data-confirmar]').forEach(function (f) {
     f.addEventListener('submit', function (ev) {
       if (!confirm(f.dataset.confirmar)) ev.preventDefault();

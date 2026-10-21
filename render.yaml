@@ -1,4 +1,3 @@
-# Despliegue en Render (https://render.com) — plan gratuito
 services:
   - type: web
     name: kstore-pedidos
